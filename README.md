@@ -110,7 +110,7 @@ Este es un proyecto de práctica personal, pero cualquier sugerencia, issue o me
 
 ## 📜 Licencia
 
-MIT
+Por definir...
 
 ---
 
