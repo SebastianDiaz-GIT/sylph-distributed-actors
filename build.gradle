@@ -1,12 +1,26 @@
 plugins {
-    id 'java'
+    id 'java-library'
 }
 
-group = 'org.example'
+group = 'sylph'
 version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
 
 repositories {
     mavenCentral()
+}
+
+jar{
+    manifest {
+        attributes(
+                'Implementation-Title': 'SYLPH Distributed Actors',
+                'Implementation-Version': project.version
+        )
+    }
 }
 
 dependencies {
