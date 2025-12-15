@@ -39,19 +39,26 @@ import java.util.function.Supplier;
  */
 public interface ActorSystem extends AutoCloseable {
 
-    <M> sylph.api.ActorRef<M> spawn(Supplier<Actor<M>> actorSupplier);
+    /**
+     * Crea un actor con un nombre generado automáticamente.
+     */
+    <M> ActorRef<M> spawn(Supplier<Actor<M>> actorSupplier);
+    /**
+     * Crea un actor con un nombre generado automáticamente y el tipo de mailbox especificado.
+     */
+    <M> ActorRef<M> spawn(Supplier<Actor<M>> actorSupplier, MailboxType mailboxType);
 
     /**
      * Crea un actor con el nombre proporcionado. El nombre debe ser único en el sistema
      * o la implementación debe decidir la política en caso de conflicto (por ejemplo, lanzar
      * una excepción o devolver la referencia ya existente).
      */
-    <M> sylph.api.ActorRef<M> spawn(String name, Supplier<Actor<M>> actorSupplier);
+    <M> ActorRef<M> spawn(String name, Supplier<Actor<M>> actorSupplier);
 
     /**
      * Crea un actor con el nombre y tipo de mailbox especificados.
      */
-    <M> sylph.api.ActorRef<M> spawn(String name, Supplier<Actor<M>> actorSupplier, MailboxType mailboxType);
+    <M> ActorRef<M> spawn(String name, Supplier<Actor<M>> actorSupplier, MailboxType mailboxType);
 
     /**
      * Apaga el sistema liberando recursos y deteniendo todos los actores.

@@ -10,7 +10,7 @@ public class PrinterDemo {
         // Usamos la fábrica pública para obtener un ActorSystem (devuelve la interfaz ActorSystem)
         try (var system = ActorSystems.create()) {
             // Creamos un actor con nombre legible "printer"
-            ActorRef<PriorityMessage> printer = system.spawn("printer", PriorityPrinter::new, MailboxType.PRIORITY);
+            ActorRef<PriorityMessage> printer = system.spawn(PriorityPrinter::new, MailboxType.PRIORITY);
             ActorRef<String> printer2 = system.spawn("printer2", PrinterActor::new);
 
             // Enviamos mensajes al actor

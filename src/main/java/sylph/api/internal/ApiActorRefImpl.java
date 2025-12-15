@@ -1,21 +1,22 @@
 package sylph.api.internal;
 
+import sylph.actors.ActorRefImpl;
 import sylph.api.ActorRef;
 
 /**
  * Implementación interna de la referencia pública a un actor.
  */
 public final class ApiActorRefImpl<M> implements ActorRef<M> {
-    private volatile sylph.actors.ActorRef delegate;
+    private volatile ActorRefImpl delegate;
 
-    public void setDelegate(sylph.actors.ActorRef delegate) {
+    public void setDelegate(ActorRefImpl delegate) {
         this.delegate = delegate;
     }
 
     @Override
     public void tell(M message) {
         System.out.println("[ApiActorRef] sending: " + message);
-        sylph.actors.ActorRef d = this.delegate;
+        ActorRefImpl d = this.delegate;
         if (d == null) {
             throw new IllegalStateException("ActorRef not initialized yet");
         }
@@ -24,7 +25,7 @@ public final class ApiActorRefImpl<M> implements ActorRef<M> {
 
     @Override
     public void stop() {
-        sylph.actors.ActorRef d = this.delegate;
+        ActorRefImpl d = this.delegate;
         if (d != null) d.stop();
     }
 }

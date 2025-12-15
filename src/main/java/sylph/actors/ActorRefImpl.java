@@ -1,5 +1,6 @@
 package sylph.actors;
 
+import sylph.actors.records.ActorId;
 import sylph.interfaces.message.Message;
 
 /**
@@ -7,9 +8,11 @@ import sylph.interfaces.message.Message;
  */
 public class ActorRefImpl {
     private final BasicActorImpl actor;
+    private final ActorId id;
 
-    public ActorRefImpl(BasicActorImpl actor) {
+    public ActorRefImpl(BasicActorImpl actor, ActorId id) {
         this.actor = actor;
+        this.id = id;
     }
 
     public void send(Message message) {
