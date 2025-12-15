@@ -15,11 +15,11 @@ import java.util.ArrayList;
  */
 public class FifoMailboxBackpressureDemo {
     public static void main(String[] args) throws InterruptedException {
-        ActorSystem system = new ActorSystem();
+        ActorSystemImpl system = new ActorSystemImpl();
         List<String> processed = Collections.synchronizedList(new ArrayList<>());
 
         // Actor FIFO con retardo artificial para simular procesamiento lento
-        ActorRef fifoTest = system.actorOf("fifoTest", new BasicActor(new FifoMailbox(3)) {
+        ActorRefImpl fifoTest = system.actorOf("fifoTest", new BasicActorImpl(new FifoMailbox(3)) {
             @Override
             protected void onReceive(Message message) {
                 try {

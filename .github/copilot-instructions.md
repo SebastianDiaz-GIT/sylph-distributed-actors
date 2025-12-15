@@ -45,3 +45,225 @@ Mi objetivo es asistir en el desarrollo del framework SYLPH proporcionando:
 - No debo ignorar las limitaciones y requisitos específicos del proyecto SYLPH.
 - No debo asumir que el usuario tiene conocimientos avanzados en sistemas distribuidos o el modelo de actores sin antes verificar su nivel de experiencia.
 - No debo proporcionar información o sugerencias que no estén alineadas con los objetivos.
+
+# Instrucciones de desarrollo – Sylph Actor Framework
+
+Este archivo define **cómo debe pensar, sugerir y ayudar GitHub Copilot** al trabajar en este repositorio.
+El objetivo es construir un **framework de actores moderno en Java**, inspirado en Akka/Pekko, pero aprovechando **Virtual Threads (Project Loom)**.
+
+---
+
+## 🎯 Objetivo del proyecto
+
+Construir un **runtime de actores local-first** con:
+
+* Aislamiento de estado
+* Paso de mensajes
+* Mailboxes inteligentes
+* Supervisión
+* Virtual Threads como base de concurrencia
+
+El proyecto **NO es una aplicación Spring**, ni un microservicio. Es una **librería/framework**.
+
+---
+
+## 🧠 Principios no negociables
+
+Copilot **DEBE respetar siempre**:
+
+1. **Modelo Actor estricto**
+
+    * Un actor procesa **un mensaje a la vez**
+    * No hay estado compartido mutable
+    * No hay locks externos
+
+2. **Mensajes inmutables**
+
+    * Usar `record`
+    * No setters
+    * Semánticos (no técnicos)
+
+3. **La API es primero**
+
+    * El runtime se adapta a la API
+    * No al revés
+
+4. **Virtual Threads son un detalle interno**
+
+    * Nunca exponer `Thread`, `Executor`, `Future` en la API pública
+
+5. **Bloqueo permitido**
+
+    * El framework debe permitir llamadas bloqueantes (JDBC, HTTP, sleep)
+    * No usar WebFlux ni APIs reactivas
+
+---
+
+## 🧱 Diseño de la API pública
+
+Copilot **solo debe generar o modificar** estas abstracciones públicas:
+
+### Actor
+
+```java
+public interface Actor<M> {
+    void receive(M message, ActorContext<M> ctx) throws Exception;
+}
+```
+
+### ActorRef
+
+```java
+public interface ActorRef<M> {
+    void tell(M message);
+}
+```
+
+### ActorSystem
+
+```java
+public interface ActorSystem {
+    <M> ActorRef<M> spawn(Supplier<Actor<M>> actor);
+    void shutdown();
+}
+```
+
+### ActorContext
+
+```java
+public interface ActorContext<M> {
+    ActorRef<M> self();
+    void stop();
+}
+```
+
+⚠️ Copilot **NO debe**:
+
+* Exponer implementaciones concretas
+* Usar herencia para definir actores
+* Usar `Object` como tipo de mensaje
+
+---
+
+## 📬 Mailboxes
+
+Mailboxes son **infraestructura interna**.
+
+Copilot puede crear implementaciones internas como:
+
+* FIFO mailbox
+* Priority mailbox
+* Bounded mailbox
+
+Pero **NO deben formar parte de la API pública**.
+
+Ejemplo interno válido:
+
+```java
+interface Mailbox<M> {
+    void enqueue(M msg);
+    M dequeue();
+}
+```
+
+---
+
+## 🧵 Runtime y concurrencia
+
+Directrices para Copilot:
+
+* Usar `Executors.newVirtualThreadPerTaskExecutor()`
+* Un actor **NO procesa mensajes en paralelo**
+* No usar pools fijos
+* No usar `CompletableFuture` en la API
+
+Ejemplo interno aceptable:
+
+```java
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    executor.submit(actorLoop);
+}
+```
+
+---
+
+## 🛡️ Manejo de errores
+
+Copilot debe:
+
+* Evitar lanzar excepciones fuera del actor
+* Preparar el diseño para supervisión
+
+Ejemplo conceptual:
+
+```java
+enum Decision { RESTART, RESUME, STOP }
+```
+
+---
+
+## 🧪 Testing
+
+El código debe ser:
+
+* Determinístico
+* Testeable sin sleeps reales
+* Independiente de Spring
+
+Copilot debe priorizar:
+
+* Tests de actores aislados
+* Simulación de fallos
+
+---
+
+## 🚫 Anti‑patrones prohibidos
+
+Copilot **NO debe generar**:
+
+* `@Service`, `@Component`, `@Autowired`
+* APIs basadas en Strings (`getActor("name")`)
+* `instanceof` para manejar mensajes
+* Exposición de threads o executors
+* Estado compartido entre actores
+
+---
+
+## 🌱 Evolución futura (no implementar aún)
+
+Estas ideas deben influir el diseño, pero **no implementarse todavía**:
+
+* Clustering
+* Persistencia
+* Serialización remota
+* gRPC
+
+La API debe permitirlas sin romper compatibilidad.
+
+---
+
+## 🧭 Filosofía de desarrollo
+
+> Claridad > performance
+>
+> API pequeña > runtime complejo
+>
+> Uso real > features teóricas
+
+Copilot debe preferir:
+
+* Código simple
+* Legible
+* Fácil de depurar
+
+---
+
+## ✅ Objetivo de la versión actual (v0.1)
+
+* Actor local
+* Mailbox FIFO
+* Virtual Threads
+* API mínima
+* Ejemplos simples
+
+Nada más.

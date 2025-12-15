@@ -5,10 +5,10 @@ import sylph.interfaces.message.Message;
 /**
  * Referencia segura para interactuar con un actor.
  */
-public class ActorRef {
-    private final BasicActor actor;
+public class ActorRefImpl {
+    private final BasicActorImpl actor;
 
-    public ActorRef(BasicActor actor) {
+    public ActorRefImpl(BasicActorImpl actor) {
         this.actor = actor;
     }
 

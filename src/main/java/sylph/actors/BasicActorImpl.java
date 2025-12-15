@@ -6,19 +6,39 @@ import sylph.interfaces.message.Message;
 
 /**
  * Actor básico que procesa mensajes de tipo Message en un hilo virtual.
- * Ahora soporta mailboxes plugin-based.
+ * Ahora soporta mailboxes plugin-based y permite inicio diferido del bucle
+ * para que adaptadores puedan inicializar contexto antes de arrancar.
  */
-public class BasicActor {
+public class BasicActorImpl {
     private final Mailbox mailbox;
-    private final Thread actorThread;
+    private volatile Thread actorThread;
     private volatile boolean running = true;
 
-    public BasicActor() {
-        this(new FifoMailbox());
+    public BasicActorImpl() {
+        this(new FifoMailbox(), true);
     }
 
-    public BasicActor(Mailbox mailbox) {
+    public BasicActorImpl(Mailbox mailbox) {
+        this(mailbox, true);
+    }
+
+    /**
+     * Construye el actor con opción de iniciar inmediatamente o no.
+     * Cuando startImmediately es false, el hilo no arrancará hasta
+     * que se llame a {@link #startActorLoop()}.
+     */
+    protected BasicActorImpl(Mailbox mailbox, boolean startImmediately) {
         this.mailbox = mailbox;
+        if (startImmediately) {
+            startActorLoop();
+        }
+    }
+
+    /**
+     * Inicia el bucle del actor en un hilo virtual. Idempotente.
+     */
+    protected void startActorLoop() {
+        if (actorThread != null) return;
         actorThread = Thread.ofVirtual().start(() -> {
             while (running) {
                 try {
@@ -26,6 +46,9 @@ public class BasicActor {
                     onReceive(message);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                } catch (Throwable t) {
+                    // No propagar excepciones fuera del actor. Preparado para supervisión futura.
+                    t.printStackTrace();
                 }
             }
         });
@@ -52,6 +75,9 @@ public class BasicActor {
 
     public void stop() {
         running = false;
-        actorThread.interrupt();
+        Thread t = actorThread;
+        if (t != null) {
+            t.interrupt();
+        }
     }
 }

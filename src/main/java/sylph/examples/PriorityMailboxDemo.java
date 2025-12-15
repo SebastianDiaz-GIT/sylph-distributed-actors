@@ -10,10 +10,10 @@ import sylph.interfaces.message.Message;
  */
 public class PriorityMailboxDemo {
     public static void main(String[] args) throws InterruptedException {
-        ActorSystem system = new ActorSystem();
+        ActorSystemImpl system = new ActorSystemImpl();
 
         // Actor que imprime los mensajes en orden de prioridad
-        ActorRef actor = system.actorOf("priorityActor", new BasicActor(new PriorityMailbox()) {
+        ActorRefImpl actor = system.actorOf("priorityActor", new BasicActorImpl(new PriorityMailbox()) {
             @Override
             protected void onReceive(Message message) {
                 if (message instanceof PriorityMessage pm) {

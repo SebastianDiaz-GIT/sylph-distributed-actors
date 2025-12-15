@@ -6,11 +6,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Sistema de actores que administra la creación y registro de actores.
  */
-public class ActorSystem {
-    private final Map<String, ActorRef> actors = new ConcurrentHashMap<>();
+public class ActorSystemImpl {
+    private final Map<String, ActorRefImpl> actors = new ConcurrentHashMap<>();
 
-    public ActorRef actorOf(String name, BasicActor actor) {
-        ActorRef ref = new ActorRef(actor);
+    public ActorRefImpl actorOf(String name, BasicActorImpl actor) {
+        ActorRefImpl ref = new ActorRefImpl(actor);
         actors.put(name, ref);
         return ref;
     }
@@ -21,7 +21,7 @@ public class ActorSystem {
      * @param name Nombre del actor.
      * @return Referencia del actor o null si no existe.
      */
-    public ActorRef getActor(String name) {
+    public ActorRefImpl getActor(String name) {
         return actors.get(name);
     }
 
@@ -32,7 +32,7 @@ public class ActorSystem {
      */
 
     public void stopActor(String name) {
-        ActorRef ref = actors.remove(name);
+        ActorRefImpl ref = actors.remove(name);
         if (ref != null) {
             ref.stop();
         }
@@ -42,7 +42,7 @@ public class ActorSystem {
      * Detiene todos los actores en el sistema.
      */
     public void stopAll() {
-        actors.values().forEach(ActorRef::stop);
+        actors.values().forEach(ActorRefImpl::stop);
         actors.clear();
     }
 }
