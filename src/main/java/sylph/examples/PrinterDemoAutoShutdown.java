@@ -2,6 +2,7 @@ package sylph.examples;
 
 import sylph.api.ActorRef;
 import sylph.api.ActorSystems;
+import sylph.enums.Supervision;
 import sylph.examples.printers.PrinterActor;
 
 /**
@@ -13,8 +14,14 @@ public class PrinterDemoAutoShutdown {
     public static void main(String[] args) throws InterruptedException {
         var system = ActorSystems.create();
 
-        ActorRef<String> p1 = system.spawn("printerA", PrinterActor::new);
-        ActorRef<String> p2 = system.spawn("printerB", PrinterActor::new);
+        ActorRef<String> p1 = system.spawn(PrinterActor::new)
+                .withName("printerA")
+                .withSupervision(Supervision.NONE)
+                .start();
+
+        ActorRef<String> p2 = system.spawn(PrinterActor::new)
+                .withName("printerB")
+                .start();
 
         p1.tell("msg1");
         p2.tell("msg2");
@@ -36,4 +43,3 @@ public class PrinterDemoAutoShutdown {
         System.out.println("Done.");
     }
 }
-

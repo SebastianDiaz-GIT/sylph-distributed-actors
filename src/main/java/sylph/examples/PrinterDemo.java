@@ -4,6 +4,7 @@ import sylph.actors.records.PriorityMessage;
 import sylph.api.ActorRef;
 import sylph.api.ActorSystems;
 import sylph.enums.MailboxType;
+import sylph.enums.Supervision;
 import sylph.examples.printers.PrinterActor;
 import sylph.examples.printers.PriorityPrinter;
 
@@ -11,9 +12,16 @@ public class PrinterDemo {
     public static void main(String[] args) throws InterruptedException {
         // Usamos la fábrica pública para obtener un ActorSystem (devuelve la interfaz ActorSystem)
         try (var system = ActorSystems.create()) {
-            // Creamos un actor con nombre legible "printer"
-            ActorRef<PriorityMessage> printer = system.spawn(PriorityPrinter::new, MailboxType.PRIORITY);
-            ActorRef<String> printer2 = system.spawn("printer2", PrinterActor::new);
+            // Creamos un actor con nombre legible "printer" usando el builder fluent
+            ActorRef<PriorityMessage> printer = system.spawn(PriorityPrinter::new)
+                    .withName("printer")
+                    .withMailbox(MailboxType.PRIORITY)
+                    .withSupervision(Supervision.NONE)
+                    .start();
+
+            ActorRef<String> printer2 = system.spawn(PrinterActor::new)
+                    .withName("printer2")
+                    .start();
 
             // Enviamos mensajes al actor
             printer.tell(new PriorityMessage(1, "low priority"));

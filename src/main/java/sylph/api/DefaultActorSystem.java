@@ -34,10 +34,8 @@ final class DefaultActorSystem implements ActorSystem, AutoCloseable {
     }
 
     @Override
-    public <M> ActorRef<M> spawn(Supplier<Actor<M>> actorSupplier) {
-        // Delegar a la versión con nombre generando uno único
-        String name = "actor-" + UUID.randomUUID();
-        return spawn(name, actorSupplier, MailboxType.FIFO);
+    public <M> SpawnBuilder<M> spawn(Supplier<Actor<M>> actorSupplier) {
+        return new DefaultSpawnBuilder<>(this, actorSupplier);
     }
 
     @Override
@@ -77,10 +75,8 @@ final class DefaultActorSystem implements ActorSystem, AutoCloseable {
     }
 
     private Mailbox createMailbox(MailboxType mailboxType) {
-        return switch (mailboxType) {
-            case PRIORITY -> new PriorityMailbox();
-            default -> new FifoMailbox();
-        };
+        if (mailboxType == MailboxType.PRIORITY) return new PriorityMailbox();
+        return new FifoMailbox();
     }
 
     @Override

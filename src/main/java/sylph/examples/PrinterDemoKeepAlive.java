@@ -2,6 +2,7 @@ package sylph.examples;
 
 import sylph.api.ActorRef;
 import sylph.api.ActorSystems;
+import sylph.enums.Supervision;
 import sylph.examples.printers.PrinterActor;
 
 import java.io.IOException;
@@ -16,8 +17,13 @@ public class PrinterDemoKeepAlive {
         var system = ActorSystems.create();
 
         // Spawn de actores con nombre legible
-        ActorRef<String> printer = system.spawn("printer", PrinterActor::new);
-        ActorRef<String> printer2 = system.spawn("printer2", PrinterActor::new);
+        ActorRef<String> printer = system.spawn(PrinterActor::new)
+                .withName("printer")
+                .withSupervision(Supervision.NONE)
+                .start();
+        ActorRef<String> printer2 = system.spawn(PrinterActor::new)
+                .withName("printer2")
+                .start();
 
         // Enviar algunos mensajes
         printer.tell("hello");
@@ -34,4 +40,3 @@ public class PrinterDemoKeepAlive {
         System.out.println("Sistema detenido. Saliendo.");
     }
 }
-
