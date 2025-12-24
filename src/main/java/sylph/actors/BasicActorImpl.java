@@ -119,6 +119,37 @@ public class BasicActorImpl {
         }
     }
 
+    /**
+     * Variante de stop que descarta (no procesa) los mensajes pendientes en la mailbox.
+     * Esta operación es útil para políticas de supervisión que requieren que, al detener
+     * un actor, los mensajes en cola se pierdan y se consideren rechazados.
+     */
+    public synchronized void stopDropPending() {
+        if (state == LifecycleState.STOPPING || state == LifecycleState.STOPPED) return;
+        state = LifecycleState.STOPPING;
+        metrics.setState(state);
+        logger.info("Actor entering STOPPING (drop pending messages)");
+
+        // Desechamos mensajes pendientes incrementando la métrica de rechazados
+        Message pending;
+        long dropped = 0;
+        while ((pending = mailbox.poll()) != null) {
+            dropped++;
+            metrics.incrementRejected();
+        }
+        if (dropped > 0) {
+            logger.info("Dropped " + dropped + " pending messages during stop");
+        }
+
+        state = LifecycleState.STOPPED;
+        metrics.setState(state);
+        logger.info("Actor stopped");
+        Thread t = actorThread;
+        if (t != null) {
+            t.interrupt();
+        }
+    }
+
     public ActorMetrics getMetrics() {
         return metrics;
     }

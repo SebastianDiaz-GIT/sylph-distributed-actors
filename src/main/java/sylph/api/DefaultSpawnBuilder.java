@@ -39,8 +39,8 @@ final class DefaultSpawnBuilder<M> implements SpawnBuilder<M> {
     @Override
     public ActorRef<M> start() {
         String resolvedName = name != null ? name : "actor-" + java.util.UUID.randomUUID();
-        // Por ahora la política de supervision no está implementada; se guarda para futuras extensiones
-        return system.spawn(resolvedName, supplier, mailboxType);
+        // Pasamos la política de supervision al spawn del sistema.
+        return system.spawn(resolvedName, supplier, mailboxType, supervision);
     }
 }
 

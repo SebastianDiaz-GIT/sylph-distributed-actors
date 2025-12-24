@@ -5,6 +5,7 @@ import sylph.actors.ActorSystemImpl;
 import sylph.api.internal.AdapterBasicActorImpl;
 import sylph.api.internal.ApiActorRefImpl;
 import sylph.enums.MailboxType;
+import sylph.enums.Supervision;
 import sylph.interfaces.mailbox.Mailbox;
 import sylph.mailbox.FifoMailbox;
 import sylph.mailbox.PriorityMailbox;
@@ -58,13 +59,23 @@ final class DefaultActorSystem implements ActorSystem, AutoCloseable {
         Objects.requireNonNull(actorSupplier, "actorSupplier");
         Objects.requireNonNull(mailboxType, "mailboxType");
 
-        Actor<M> apiActor = actorSupplier.get();
+        // Delegar a la nueva versión sin supervision (por compatibilidad)
+        return spawn(name, actorSupplier, mailboxType, Supervision.NONE);
+    }
+
+    // Nueva overload que acepta Supervision
+    public <M> ActorRef<M> spawn(String name, Supplier<Actor<M>> actorSupplier, MailboxType mailboxType, Supervision supervision) {
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(actorSupplier, "actorSupplier");
+        Objects.requireNonNull(mailboxType, "mailboxType");
+        Objects.requireNonNull(supervision, "supervision");
+
         ApiActorRefImpl<M> publicRef = new ApiActorRefImpl<>();
 
         // Seleccionar la mailbox según el tipo público
         Mailbox mailbox = createMailbox(mailboxType);
 
-        AdapterBasicActorImpl<M> adapter = new AdapterBasicActorImpl<>(apiActor, publicRef, mailbox);
+        AdapterBasicActorImpl<M> adapter = new AdapterBasicActorImpl<>(actorSupplier, publicRef, mailbox, supervision);
         // Registrar en el sistema interno con el nombre proporcionado
         ActorRefImpl internalRef = delegate.actorOf(name, adapter);
         // Asignar él, delégate para que la ApiActorRef pueda enviar mensajes
