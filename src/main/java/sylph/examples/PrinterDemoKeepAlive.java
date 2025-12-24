@@ -2,6 +2,7 @@ package sylph.examples;
 
 import sylph.api.ActorRef;
 import sylph.api.ActorSystems;
+import sylph.examples.printers.PrinterActor;
 
 import java.io.IOException;
 

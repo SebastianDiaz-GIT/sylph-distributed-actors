@@ -4,6 +4,8 @@ import sylph.actors.records.PriorityMessage;
 import sylph.api.ActorRef;
 import sylph.api.ActorSystems;
 import sylph.api.MailboxType;
+import sylph.examples.printers.PrinterActor;
+import sylph.examples.printers.PriorityPrinter;
 
 public class PrinterDemo {
     public static void main(String[] args) throws InterruptedException {

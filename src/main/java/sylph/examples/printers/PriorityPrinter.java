@@ -1,4 +1,4 @@
-package sylph.examples;
+package sylph.examples.printers;
 
 import sylph.actors.records.PriorityMessage;
 import sylph.api.Actor;
