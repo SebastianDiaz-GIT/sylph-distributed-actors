@@ -1,5 +1,7 @@
 package sylph.api;
 
+import sylph.enums.MailboxType;
+
 import java.util.function.Supplier;
 
 /**

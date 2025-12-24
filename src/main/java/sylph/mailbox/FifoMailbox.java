@@ -25,4 +25,9 @@ public class FifoMailbox implements Mailbox {
     public Message take() throws InterruptedException {
         return queue.take();
     }
+
+    @Override
+    public Message poll() {
+        return queue.poll();
+    }
 }

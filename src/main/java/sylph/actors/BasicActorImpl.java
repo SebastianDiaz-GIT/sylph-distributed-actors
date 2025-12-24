@@ -1,8 +1,11 @@
 package sylph.actors;
 
+import sylph.enums.LifecycleState;
 import sylph.interfaces.mailbox.Mailbox;
 import sylph.mailbox.FifoMailbox;
 import sylph.interfaces.message.Message;
+import sylph.util.logging.Logger;
+import sylph.util.metrics.ActorMetrics;
 
 /**
  * Actor básico que procesa mensajes de tipo Message en un hilo virtual.
@@ -12,7 +15,9 @@ import sylph.interfaces.message.Message;
 public class BasicActorImpl {
     private final Mailbox mailbox;
     private volatile Thread actorThread;
-    private volatile boolean running = true;
+    private volatile LifecycleState state = LifecycleState.CREATED;
+    private final Logger logger = Logger.getLogger(BasicActorImpl.class);
+    private final ActorMetrics metrics = new ActorMetrics();
 
     public BasicActorImpl() {
         this(new FifoMailbox(), true);
@@ -37,18 +42,22 @@ public class BasicActorImpl {
     /**
      * Inicia el bucle del actor en un hilo virtual. Idempotente.
      */
-    protected void startActorLoop() {
+    protected synchronized void startActorLoop() {
         if (actorThread != null) return;
+        state = LifecycleState.RUNNING;
+        metrics.setState(state);
         actorThread = Thread.ofVirtual().start(() -> {
-            while (running) {
+            while (state == LifecycleState.RUNNING) {
                 try {
                     Message message = mailbox.take();
-                    onReceive(message);
+                    try {
+                        onReceive(message);
+                        metrics.incrementProcessed();
+                    } catch (Throwable t) {
+                        logger.error("Error processing message", t);
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                } catch (Throwable t) {
-                    // No propagar excepciones fuera del actor. Preparado para supervisión futura.
-                    t.printStackTrace();
                 }
             }
         });
@@ -57,15 +66,22 @@ public class BasicActorImpl {
     /**
      * Sends a message to this actor's mailbox.
      * This method blocks if the mailbox is full.
+     * If the actor is stopping or stopped, the message will be rejected.
      *
      * @param message the message to send
      */
     public void send(Message message) {
+        if (state == LifecycleState.STOPPING || state == LifecycleState.STOPPED) {
+            // Reject messages when stopping/stopped. Could log or throw in future.
+            metrics.incrementRejected();
+            return;
+        }
         try {
             mailbox.put(message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             // Optionally log or handle interruption
+            logger.warn("Interrupted while sending message");
         }
     }
 
@@ -73,11 +89,37 @@ public class BasicActorImpl {
         // Implementar en subclases
     }
 
-    public void stop() {
-        running = false;
+    /**
+     * Inicia el proceso de parada: pasa a STOPPING, drena la mailbox procesando
+     * los mensajes pendientes, y luego marca STOPPED.
+     */
+    public synchronized void stop() {
+        if (state == LifecycleState.STOPPING || state == LifecycleState.STOPPED) return;
+        state = LifecycleState.STOPPING;
+        metrics.setState(state);
+        logger.info("Actor entering STOPPING");
+
+        // Procesar mensajes pendientes sin aceptar nuevos
+        Message pending;
+        while ((pending = mailbox.poll()) != null) {
+            try {
+                onReceive(pending);
+                metrics.incrementProcessed();
+            } catch (Throwable t) {
+                logger.error("Error processing pending message during stop", t);
+            }
+        }
+
+        state = LifecycleState.STOPPED;
+        metrics.setState(state);
+        logger.info("Actor stopped");
         Thread t = actorThread;
         if (t != null) {
             t.interrupt();
         }
+    }
+
+    public ActorMetrics getMetrics() {
+        return metrics;
     }
 }

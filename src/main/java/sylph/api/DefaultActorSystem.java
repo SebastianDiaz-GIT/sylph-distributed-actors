@@ -4,6 +4,7 @@ import sylph.actors.ActorRefImpl;
 import sylph.actors.ActorSystemImpl;
 import sylph.api.internal.AdapterBasicActorImpl;
 import sylph.api.internal.ApiActorRefImpl;
+import sylph.enums.MailboxType;
 import sylph.interfaces.mailbox.Mailbox;
 import sylph.mailbox.FifoMailbox;
 import sylph.mailbox.PriorityMailbox;

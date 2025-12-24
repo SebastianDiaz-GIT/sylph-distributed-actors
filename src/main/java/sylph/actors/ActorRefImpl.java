@@ -2,6 +2,8 @@ package sylph.actors;
 
 import sylph.actors.records.ActorId;
 import sylph.interfaces.message.Message;
+import sylph.util.logging.Logger;
+import sylph.util.metrics.ActorMetrics;
 
 /**
  * Referencia segura para interactuar con un actor.
@@ -9,6 +11,7 @@ import sylph.interfaces.message.Message;
 public class ActorRefImpl {
     private final BasicActorImpl actor;
     private final ActorId id;
+    private final Logger logger = Logger.getLogger(ActorRefImpl.class);
 
     public ActorRefImpl(BasicActorImpl actor, ActorId id) {
         this.actor = actor;
@@ -16,11 +19,16 @@ public class ActorRefImpl {
     }
 
     public void send(Message message) {
+        if (actor == null) return;
         actor.send(message);
     }
 
     public void stop() {
+        logger.info("Stopping actor " + id.value());
         actor.stop();
     }
-}
 
+    public ActorMetrics metrics() {
+        return actor != null ? actor.getMetrics() : null;
+    }
+}

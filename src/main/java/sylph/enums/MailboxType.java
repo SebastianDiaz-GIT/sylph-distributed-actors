@@ -1,4 +1,4 @@
-package sylph.api;
+package sylph.enums;
 
 /**
  * Tipos de mailbox disponibles en SYLPH (v0.1).
