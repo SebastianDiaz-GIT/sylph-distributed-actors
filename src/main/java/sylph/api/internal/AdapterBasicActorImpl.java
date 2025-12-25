@@ -8,6 +8,7 @@ import sylph.interfaces.message.Message;
 import sylph.mailbox.FifoMailbox;
 import sylph.actors.BasicActorImpl;
 import sylph.util.logging.Logger;
+import sylph.testhooks.ExceptionNotifierRegistry;
 
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -66,6 +67,9 @@ public final class AdapterBasicActorImpl<M> extends BasicActorImpl {
         try {
             actor.receive(payload, ctx);
         } catch (Throwable t) {
+            // Notificar a registry sobre la excepción para permitir awaits en tests
+            try { ExceptionNotifierRegistry.notifyException(publicRef, payload, t); } catch (Throwable ignore) {}
+
             // Manejo básico de supervisión según la política configurada.
             logger.error("Error in actor receive", t);
             if (supervision == Supervision.RESTART) {

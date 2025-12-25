@@ -49,7 +49,7 @@ ActorRef<MyMessage> ref = system.spawn(MyActor::new)
     .spawn();
 ```
 
-   - `withSupervision(...)` queda como placeholder: la opción se guarda en el builder y puede habilitarse más tarde con la política deseada (RESTART, STOP, NONE).
+   - `withSupervision(...)` guarda la política para el runtime; la implementación actual soporta políticas básicas RESTART/STOP/NONE.
 
 Contenido del repositorio
 -------------------------
@@ -101,6 +101,56 @@ java -cp "build\classes\java\main" sylph.examples.DemoWithMetrics
 Invoke-RestMethod 'http://localhost:8000/metrics'
 ```
 
+Testing y QA
+------------
+Sylph incluye utilidades y pruebas para validar comportamiento del runtime (lifecycle, supervisión, mailboxes). A continuación encontrarás instrucciones para ejecutar tests y usar las utilidades de prueba que añadimos.
+
+Ejecutar tests (Gradle)
+```powershell
+# Ejecutar todos los tests (unitarios + integration/e2e)
+.\gradlew.bat test --no-daemon
+
+# Ejecutar tests específicos
+.\gradlew.bat test --tests "sylph.examples.SupervisionE2ERestartTest" --no-daemon
+```
+
+Utilidades de testing incluidas
+- `TestProbe` (helper de test): clase de test helper que captura mensajes que los actores notifican como "procesados" y permite métodos determinísticos: `awaitProcessed`, `awaitProcessedCount` y `awaitError(Duration)`. Está en `src/test/java/sylph/testutils/TestProbe.java`. Usa try-with-resources para desregistrarse automáticamente.
+
+- `ActorProbeActor` (actor de prueba): actor que puedes crear dentro del `ActorSystem` y que reenvía los mensajes recibidos al `TestProbe` helper. Útil para pruebas de extremo a extremo (E2E) que validan la ruta completa de mensajería (ActorRef → mailbox → actor → probe).
+
+- `ExceptionNotifierRegistry` (runtime/main): registry en `src/main/java/sylph/testhooks/ExceptionNotifierRegistry.java` que permite registrar listeners de excepciones lanzadas dentro de `receive(...)`. Los tests se registran en este registry para implementar `awaitError`.
+
+Notas sobre `TestHooks`
+- Para compatibilidad durante el desarrollo existe un shim de tests `src/test/java/sylph/testhooks/TestHooks.java` que delega al `ExceptionNotifierRegistry`. En producción hay una clase `src/main/java/sylph/testhooks/TestHooks.java` marcada como deprecated que lanza si se la invoca, para evitar dependencias de testing en el artefacto final.
+
+Ejemplos rápidos de uso del `TestProbe`
+
+- Esperar que un actor haya procesado un mensaje:
+
+```java
+try (TestProbe<Msg> probe = new TestProbe<>()) {
+    // ... spawn actor que llama probe.receiveFromActor(message) desde su receive() ...
+    assertTrue(probe.awaitProcessedCount(2, Duration.ofSeconds(2)));
+}
+```
+
+- Esperar una excepción lanzada por un actor (awaitError):
+
+```java
+try (TestProbe<Msg> probe = new TestProbe<>()) {
+    target.tell(new Msg("boom")); // este mensaje hará que el actor lance
+    Throwable t = probe.awaitError(Duration.ofSeconds(1));
+    assertNotNull(t);
+    assertEquals("boom", t.getMessage());
+}
+```
+
+Estrategia de pruebas recomendada
+- Usa `TestProbe` para pruebas unitarias determinísticas (life-cycle, stop-drain, supervisión local).
+- Usa `ActorProbeActor` para pruebas E2E que validen la ruta completa de mensajería.
+- Evita sleeps arbitrarios en tests; usa los métodos await del `TestProbe` con timeouts cortos y controlados.
+
 Ejemplo mínimo (uso recomendado)
 -------------------------------
 ```java
@@ -137,11 +187,11 @@ Buenas prácticas
 
 Siguientes pasos recomendados (v0.2)
 -----------------------------------
-- Implementar supervisión activa (RESTART / STOP) en el runtime.
+- Implementar supervisión activa (RESTART / STOP) en el runtime (ya hay soporte básico; ampliar políticas y configuraciones).
 - Bounded mailboxes y backpressure.
 - `shutdownGracefully(Duration timeout)` en `ActorSystem`.
 - Migrar métricas a formato Prometheus y/o integrar Micrometer.
-- Tests unitarios para lifecycle, builder y métricas.
+- Más tests (stress/benchmark JMH, latencia/throughput) y CI que ejecute tests en serie para evitar contaminación por listeners globales.
 
 Contacto / contribuciones
 -------------------------
@@ -149,8 +199,8 @@ Abre issues o PR en el repositorio con propuestas. Antes de cambios grandes, pro
 
 Licencia
 --------
-- Por definir 
+- Por definir
 
 
 ---
-*README actualizado para incluir lifecycle, builder API, métricas y logging (v0.2.0)*
+*README actualizado con secciones de testing y notas sobre TestProbe/ActorProbe/ExceptionNotifierRegistry*

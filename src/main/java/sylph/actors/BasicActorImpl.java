@@ -50,6 +50,13 @@ public class BasicActorImpl {
             while (state == LifecycleState.RUNNING) {
                 try {
                     Message message = mailbox.take();
+                    // mailbox.take() should block until a message is available. If mailbox
+                    // is closed and empty, implementations may return null or block forever.
+                    if (state != LifecycleState.RUNNING) break;
+                    if (message == null) {
+                        // Treat null as signal to stop delivering
+                        break;
+                    }
                     try {
                         onReceive(message);
                         metrics.incrementProcessed();
@@ -58,8 +65,14 @@ public class BasicActorImpl {
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    // If interrupted due to stop, exit loop
+                    break;
                 }
             }
+            // Ensure we mark stopped if loop exits
+            state = LifecycleState.STOPPED;
+            metrics.setState(state);
+            logger.info("Actor loop exiting, state=" + state);
         });
     }
 
@@ -130,14 +143,17 @@ public class BasicActorImpl {
         metrics.setState(state);
         logger.info("Actor entering STOPPING (drop pending messages)");
 
-        // Desechamos mensajes pendientes incrementando la métrica de rechazados
-        Message pending;
-        long dropped = 0;
-        while ((pending = mailbox.poll()) != null) {
-            dropped++;
-            metrics.incrementRejected();
+        // Cierra el mailbox para rechazar nuevos mensajes
+        mailbox.close();
+
+        // Descarta los mensajes pendientes e incrementa métrica de rechazados
+        int dropped = 0;
+        try {
+            dropped = mailbox.discardPending();
+        } catch (Throwable ignore) {
         }
         if (dropped > 0) {
+            for (int i = 0; i < dropped; i++) metrics.incrementRejected();
             logger.info("Dropped " + dropped + " pending messages during stop");
         }
 
