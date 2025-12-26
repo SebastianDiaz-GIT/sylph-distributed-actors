@@ -1,5 +1,7 @@
 package sylph.api;
 
+import java.util.function.Supplier;
+
 /**
  * Contexto provisto al actor por el runtime.
  *
@@ -34,4 +36,14 @@ public interface ActorContext<M> {
      * cuando éste desee terminar su ejecución de forma controlada.
      */
     void stop();
+
+    /**
+     * Inicia un builder para crear un actor hijo desde el contexto. Permite
+     * configurar nombre, tipo de mailbox y política de supervisión.
+     *
+     * @param actorSupplier proveedor de la instancia del actor hijo
+     * @param <C> tipo de mensaje manejado por el hijo
+     * @return builder para configurar y arrancar el actor hijo
+     */
+    <C> ChildSpawnBuilder<C> spawnChild(Supplier<Actor<C>> actorSupplier);
 }

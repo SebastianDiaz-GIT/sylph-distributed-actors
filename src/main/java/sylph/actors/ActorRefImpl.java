@@ -31,4 +31,11 @@ public class ActorRefImpl {
     public ActorMetrics metrics() {
         return actor != null ? actor.getMetrics() : null;
     }
+
+    /**
+     * Exponer id para permitir registrar relaciones padre->hijo.
+     */
+    public ActorId id() {
+        return id;
+    }
 }

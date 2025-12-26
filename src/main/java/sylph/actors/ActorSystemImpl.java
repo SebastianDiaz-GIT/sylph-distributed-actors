@@ -5,6 +5,7 @@ import sylph.util.logging.Logger;
 import sylph.util.metrics.ActorMetrics;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -16,6 +17,8 @@ public class ActorSystemImpl {
     private final Logger logger = Logger.getLogger(ActorSystemImpl.class);
     private final Map<ActorId, ActorRefImpl> actors = new ConcurrentHashMap<>();
     private final Map<String, ActorId> names = new ConcurrentHashMap<>();
+    // Relación padre -> conjunto de hijos
+    private final Map<ActorId, Set<ActorId>> children = new ConcurrentHashMap<>();
 
     public ActorRefImpl actorOf(String name, BasicActorImpl actor) {
         ActorId actorId = new ActorId(UUID.randomUUID());
@@ -25,6 +28,32 @@ public class ActorSystemImpl {
             names.put(name, actorId);
         }
         logger.info("Spawned actor " + actorId.value() + (name != null ? " as '" + name + "'" : ""));
+        return ref;
+    }
+
+    /**
+     * Crea un actor hijo asociado al padre proporcionado. Registra la relación
+     * padre->hijo para permitir paradas en cascada y supervisión.
+     */
+    public ActorRefImpl actorOfChild(ActorRefImpl parent, String name, BasicActorImpl child) {
+        ActorId actorId = new ActorId(UUID.randomUUID());
+        ActorRefImpl ref = new ActorRefImpl(child, actorId);
+        actors.put(actorId, ref);
+        // Registrar por nombre si se proporcionó
+        if (name != null) {
+            names.put(name, actorId);
+        }
+        // Registrar relación padre->hijo
+        if (parent != null) {
+            ActorId pid = parent.id();
+            children.computeIfAbsent(pid, k -> ConcurrentHashMap.newKeySet()).add(actorId);
+        }
+        logger.info("Spawned child actor " + actorId.value() + (name != null ? " as '" + name + "'" : "") + (parent != null ? " parent=" + parent.id().value() : ""));
+        // Si se creó como adapter con start deferred, intentar iniciar el actor loop
+        try {
+            child.startActorLoop();
+        } catch (Throwable ignore) {
+        }
         return ref;
     }
 
@@ -41,6 +70,7 @@ public class ActorSystemImpl {
 
     /**
      * Detiene y elimina un actor del sistema.
+     * Detiene también recursivamente sus hijos si los tuviera.
      *
      * @param name Nombre del actor a detener.
      */
@@ -49,7 +79,22 @@ public class ActorSystemImpl {
         ActorId actorId = names.remove(name);
         if (actorId != null) {
             ActorRefImpl ref = actors.remove(actorId);
+            // parar hijos recursivamente
+            stopChildrenRecursive(actorId);
             if (ref != null) ref.stop();
+        }
+    }
+
+    private void stopChildrenRecursive(ActorId parentId) {
+        Set<ActorId> childs = children.remove(parentId);
+        if (childs == null) return;
+        for (ActorId cid : childs) {
+            ActorRefImpl cref = actors.remove(cid);
+            // borrar nombres asociados
+            names.entrySet().removeIf(e -> e.getValue().equals(cid));
+            // parar recursivamente
+            stopChildrenRecursive(cid);
+            if (cref != null) cref.stop();
         }
     }
 
@@ -57,9 +102,11 @@ public class ActorSystemImpl {
      * Detiene todos los actores en el sistema.
      */
     public void stopAll() {
+        // Detener todos los actores (parada recursiva segura)
         actors.values().forEach(ActorRefImpl::stop);
         names.clear();
         actors.clear();
+        children.clear();
     }
 
     /**

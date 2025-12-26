@@ -80,6 +80,8 @@ final class DefaultActorSystem implements ActorSystem, AutoCloseable {
         ActorRefImpl internalRef = delegate.actorOf(name, adapter);
         // Asignar él, delégate para que la ApiActorRef pueda enviar mensajes
         publicRef.setDelegate(internalRef);
+        // make system delegate available for spawnChild
+        publicRef.setSystemDelegate(delegate);
         // Iniciar el bucle del actor ahora que la referencia interna está lista
         adapter.start();
         return publicRef;
