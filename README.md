@@ -23,33 +23,47 @@ Principios
 
 Novedades en esta versión
 -------------------------
-1. Lifecycle
-   - Estados: `CREATED -> RUNNING -> STOPPING -> STOPPED`.
-   - `stop()` drena la mailbox (procesa mensajes encolados) antes de marcar `STOPPED`.
-   - Mensajes enviados durante `STOPPING`/`STOPPED` son rechazados (conteo en métricas).
+1. Supervisión básica
+   - Políticas soportadas: `RESTART`, `STOP`, `NONE`.
+   - Al ocurrir una excepción en `receive()`, el runtime aplica la política configurada para ese actor: reiniciar la instancia (RESTART), detener el actor y drenar su mailbox (STOP) o no hacer nada especial (NONE).
+   - `REJECT` (mecanismo de rechazo): después de `STOPPING`, nuevos mensajes son rechazados y contabilizados en métricas.
 
-2. Métricas y observabilidad
-   - `ActorMetrics` registra: mensajes procesados, mensajes rechazados y transiciones de estado.
-   - `ActorSystemImpl` expone utilidades: `getMetrics(name)`, `getAllMetrics()` y `logAllMetrics()`.
-   - `MetricsHttpExporter` (Demo): exporta métricas en texto plano en `GET /metrics` (puerto configurable, demo por defecto en 8000).
+2. Spawn de hijos (spawnChild)
+   - Un actor puede crear 0..N hijos mediante API interna `ActorContext.spawnChild(...)` o usando el builder desde el `ActorSystem`.
+   - Cada hijo conoce a su padre y la jerarquía es recursiva: un hijo puede tener a su vez sus propios hijos.
+   - Los padres pueden supervisar a sus hijos y tomar acciones (por ejemplo: detener a todos los hijos al detenerse).
+   - Ejemplo conceptual:
 
-3. Logging
-   - `sylph.util.logging.Logger` es un logger muy simple sin dependencias externas (stdout).
-   - El runtime usa el logger para eventos importantes (spawn, stop, errores en `receive`, transiciones de lifecycle).
-   - Recomendación: en proyectos productivos cambiar a SLF4J/Logback más adelante.
+```java
+ActorRef<Cmd> parent = system.spawn(ParentActor::new)
+    .withName("parent")
+    .spawn();
 
-4. API Fluent (Builder) para spawn
-   - Nueva forma de crear actores con opciones encadenadas:
+// desde ParentActor.receive(ctx):
+ActorRef<Task> child = ctx.spawnChild(TaskActor::new, "worker-1");
+```
+
+3. API Fluent (Builder) para spawn
+   - Crear actores con opciones encadenadas:
 
 ```java
 ActorRef<MyMessage> ref = system.spawn(MyActor::new)
     .withName("printer")
     .withMailbox(MailboxType.PRIORITY)
-    .withSupervision(Supervision.RESTART) // por ahora placeholder
+    .withSupervision(Supervision.RESTART)
     .spawn();
 ```
 
-   - `withSupervision(...)` guarda la política para el runtime; la implementación actual soporta políticas básicas RESTART/STOP/NONE.
+4. Testing y utilidades
+   - `TestProbe` (helper de test): captura notificaciones de procesamiento y excepciones, con métodos determinísticos `awaitProcessed`, `awaitProcessedCount` y `awaitError(Duration)`.
+   - `ActorProbeActor`: actor que reenvía notificaciones al `TestProbe` — útil en pruebas de extremo a extremo (E2E).
+   - `ExceptionNotifierRegistry`: permite registrar listeners para excepciones lanzadas desde `receive()`.
+   - Se incluyen tests unitarios y de integración (`SupervisionAndLifecycleTest`, `SupervisionE2ERestartTest`, `ChildSpawnTest`).
+
+5. Lifecycle
+   - Estados: `CREATED -> RUNNING -> STOPPING -> STOPPED`.
+   - `stop()` drena la mailbox y luego marca `STOPPED`.
+   - Mensajes enviados durante `STOPPING`/`STOPPED` son rechazados y contabilizados.
 
 Contenido del repositorio
 -------------------------
